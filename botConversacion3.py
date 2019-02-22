@@ -3,10 +3,10 @@
 from telegram import ReplyKeyboardMarkup
 from telegram.ext import (Updater, CommandHandler, MessageHandler, Filters, RegexHandler,
                           ConversationHandler)
-import shutil, os
 
 from datetime import datetime, date, time
 import calendar
+
 
 #mongodb
 import pymongo
@@ -20,17 +20,14 @@ import pyowm
 #emojis
 from emoji import emojize
 
-import socket   #socket
-import select
-import sys  #salir de la aplicacion
-import fileinput #teclear valor de variables
-import os #limpiar terminal
-import time #tiempo de espera antes de mandar un ping
-from cPickle import dump, dumps, load, loads
-port_serv=10000
+#matemáticas
+from math import sin, cos, sqrt, atan2, radians
+
+#números aleatorios
+from random import randint
 
 #Opciones en los menús
-OBJETO, OPC, OPCIONES, MENU, RESPUESTA = range(5)
+OBJETO, OPC, OPCIONES, MENU, RESPUESTA, FILTRO, SITIO, FILTRADO, MOSTRAR, PUBLI,MAS, INTRO, INTRO_SITIO, INTRO_IMAGEN, UBICACION, FRASE= range(16)
 
 #Mensajes fijos
 mensaje = "¿Desea algo más?"
@@ -39,42 +36,106 @@ mensaje = "¿Desea algo más?"
 game = "t.me/DeLaHorraBot?game=DeLaHorraGame"
 #Número de objetos
 obj = 1
+pub = 1
+fra = 1
 pole = False
 puerto = 5000
-lista = list()
 
 
-reply_keyboard1 = [['Si'], ['No']]
 
-reply_keyboard2 = [['Lugar','Otros'],
-                  ['Hecho']]
+reply_keyboard1 = [['Si'], ['No'],
+                    ['Buscar']]
+
+reply_keyboard2 = [['Cosa'],
+                    ['Otros'],
+                  ['Terminado']]
 
 reply_keyboard3 = [['Tiempo', 'Publicidad'],
                   ['Objetos Perdidos'],
  		              ['Juego', 'Chat'],
                   ['Finalizar']]
 
-reply_keyboard4 = ['start']
+reply_keyboard4 = [['Ok'],
+                  ['Filtrar']]
+
+reply_keyboard5 = [['Tipo'],
+                  ['Proximidad']]
+
+reply_keyboard6 = [['Mostrar']]
+
+reply_keyboard7 = [['Ver']]
+
+reply_keyboard8 = [['Mas'],
+                    ['Ok']]
+
+reply_keyboard9 = [['Introducir datos']]
+
+reply_keyboard10 = [['Introducir localizacion']]
+
+reply_keyboard11 = [['Introducir imagen']]
+
+reply_keyboard12 = [['Cercania']]
+
+reply_keyboard13 = [['Filtrar distancia']]
+
+reply_keyboard14 = [['Continuar']]
+
+reply_keyboard15 = [['Tipo']]
+
+reply_keyboard16 = [['Guardar frase'],
+                    ['No guardar']]
+
+reply_keyboard17 = [['Frase']]
+                  
                   
 markup1 = ReplyKeyboardMarkup(reply_keyboard1, one_time_keyboard=True)
 markup2 = ReplyKeyboardMarkup(reply_keyboard2, one_time_keyboard=True)
 markup3 = ReplyKeyboardMarkup(reply_keyboard3, one_time_keyboard=True)
 markup4 = ReplyKeyboardMarkup(reply_keyboard4, one_time_keyboard=True)
+markup5 = ReplyKeyboardMarkup(reply_keyboard5, one_time_keyboard=True)
+markup6 = ReplyKeyboardMarkup(reply_keyboard6, one_time_keyboard=True)
+markup7 = ReplyKeyboardMarkup(reply_keyboard7, one_time_keyboard=True)
+markup8 = ReplyKeyboardMarkup(reply_keyboard8, one_time_keyboard=True)
+markup9 = ReplyKeyboardMarkup(reply_keyboard9, one_time_keyboard=True)
+markup10 = ReplyKeyboardMarkup(reply_keyboard10, one_time_keyboard=True)
+markup11 = ReplyKeyboardMarkup(reply_keyboard11, one_time_keyboard=True)
+markup12 = ReplyKeyboardMarkup(reply_keyboard12, one_time_keyboard=True)
+markup13 = ReplyKeyboardMarkup(reply_keyboard13, one_time_keyboard=True)
+markup14 = ReplyKeyboardMarkup(reply_keyboard14, one_time_keyboard=True)
+markup15 = ReplyKeyboardMarkup(reply_keyboard15, one_time_keyboard=True)
+markup16 = ReplyKeyboardMarkup(reply_keyboard16, one_time_keyboard=True)
+markup17 = ReplyKeyboardMarkup(reply_keyboard17, one_time_keyboard=True)
 
 class objetoPerdido:
   idOb = ""
+  objeto = ""
   lugar = ""
   otros = ""
   imagen = ""
   fecha = ""
-  def __init__(idOb, place, mas, pic, mom):
+  def __init__(idOb, tipo, place, mas, pic, mom):
     self.idOb = obj
+    self.objeto = tipo
     self.lugar = place
     self.otros = mas
     self.imagen = pic
     self.fecha = mom
 
 
+class publi:
+  tienda = "" 
+  objeto = ""
+  oferta = ""
+  lugar = ""
+  imagen = ""
+  distancia = ""
+  def __init__(ti, ob, of, lu, im, di):
+    self.tienda = ti
+    self.objeto = ob
+    self.oferta = of
+    self.lugar = lu
+    self.image = im
+    self.distancia = di
 
 #Pasar a cadenas de caracteres
 def convertir(user_data):
@@ -86,29 +147,33 @@ def convertir(user_data):
 
     return "\n".join(caracteristicas).join(['\n', '\n'])
     
-def pasarALista(user_data):
-    caracteristicas = list()
-
-    for car, valor in user_data.items():
+# def pasarALista(user_data):
+#     print("ENTra")
+#     caracteristicas = list()
+#     print("PASANDO")
+#     for car, valor in user_data.items():
         
-        if(car == 'Lugar'):
-          objetoPerdido.lugar = valor
+#         if(car == 'Objeto'):
+#           objetoPerdido.objeto = valor
           
-        if(car == 'Otros'):
-          objetoPerdido.otros = valor
-        caracteristicas.append('{} - {}'.format(car, valor))
-
-    #archivo = open(fichero)
-    #archivo.write(caracteristicas)
-    #archivo.close()
-    return caracteristicas
+#         if(car == 'Otros'):
+#           objetoPerdido.otros = valor
+#         caracteristicas.append('{} - {}'.format(car, valor))
+    
+#     print("PASADO")
+#     #archivo = open(fichero)
+#     #archivo.write(caracteristicas)
+#     #archivo.close()
+#     return caracteristicas
 
 def start(bot, update):
     update.message.reply_text(
         "Bienvenido " + str(update.message.chat.first_name) + ". ¿Qué desea?",
         reply_markup=markup3)
     update.message.reply_text(emojize(":robot_face:"))
-    print(update.message.chat.id)
+    #bot.send_photo(chat_id = update.message.chat_id, photo=open(('./imagen/Diego_1_imagen.jpg').encode('utf-8'),'rb'))
+    #update.message.reply_text(update.message.location.latitude)
+   # print(update.message.chat.id)
     return MENU
 
 
@@ -116,105 +181,142 @@ def car_obj(bot, update, user_data):
     text = update.message.text
     user_data['choice'] = text
 
-    update.message.reply_text(
-        '{}, ¿qué sabes sobre ello?'.format(text))
+    if(text == 'Cosa'):
+      update.message.reply_text('{}, ¿de qué tipo de objeto se trata? (Ej: reloj, gorro...)'.format(text))
+    if(text == 'Otros'):
+      update.message.reply_text('{}, ¿qué deseas añadir sobre el objeto?'.format(text))
+    if(text == 'Introducir datos'):
+      update.message.reply_text('Añade Tienda/Objeto/Oferta')
+    if(text == 'Cercania'):
+      update.message.reply_text('¿A qué distancia en metros?')
+    if(text == 'Tipo'):
+      update.message.reply_text('Tipo de objeto')
+    if(text == 'Frase'):
+      update.message.reply_text('Frase: ')
     return RESPUESTA
 
-def hablar(bot, update, user_data):
-  print("HAblar")
-  global puerto
+def buzon(bot, update, user_data):
+  
+  global fra
+    
+ # print("HABLAR")
+  mongoClient = MongoClient('localhost', 27017)
+  db = mongoClient.Frases
+  collection = db.frases
+  fra = collection.find().count()
+  frases = collection.find()
 
-  ip = "3.85.166.166"
+  num = randint(1, fra)
 
- # puerto_par=raw_input("puerto de escucha clientes nuevos 500")#puerto de escucha a otros clientes a partir del 5000
-  puerto_par= puerto + 1
 
-  print(puerto)
-#nombre=raw_input("Introduce el nombre con el que apereceras en el chat : ")
-  nombre = update.message.chat.first_name
-#variables
-  inputs=[]
-#escucha de otros per
-  escucha=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-  escucha.setblocking(0)
-  escucha.bind(('',puerto_par))
-  escucha.listen(10)#escucha de otros clientes
-  inputs.append(escucha)#ayadir socket a lista de descriptores
+  for frase in frases:
+    if(num == frase['num']):
+      update.message.reply_text(frase['frase'])
 
-#descriptor server
-  print'puerto servidor en : ', port_serv
-  servidor = socket.socket(socket.AF_INET, socket.SOCK_STREAM)#creacion de socket TCP
-  inputs.append(servidor)
-  servidor.connect((ip,port_serv))#solicitud de conexion al servidor
-  print "conectando con servidor en "+ip+" , "+str(port_serv)
-#descriptor nueva conexion y agrego todas las conexiones que forman el chat
-  lista=servidor.recv(4096)
-  cadena=""
-  if lista!="0":
-    lista_conexiones = loads(lista)
-    print "La lista de conexiones recibida del servidor tiene ", str(len(lista_conexiones))," clientes:"
-    for cad in lista_conexiones:
-      print str(cad[0])+str(cad[1])
-    for conex in lista_conexiones:#recorrer todas los clientes conectados al chat
-      par = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-      par.connect(conex)#conexion con otros peer
-      inputs.append(par)#añadir socket de conexion a descriptores
-      print "nueva conexion con peer : ", conex
-  servidor.send(str(puerto_par))#ahora actualizo lista del server con mi direccion y puerto de escucha
-#descriptor teclado
-  teclado=sys.stdin
-  inputs.append(teclado)
-#interrupciones con select
-  update.message.reply_text(nombre+":\t")
-  while inputs:
-    readable, writable, excepcion= select.select(inputs, [], [])
-    for activada in readable:#recorrer lista de descriptores
-      if activada is escucha:#preguntar:se trata de una peticion de conexion por parte de algun peer nuevo que se ha conectado al chat
-        data,addr = activada.accept()# conexion aceptada
-        print "conexion con nuevo par en :",addr
-        inputs.append(data)#agregar socket a lista de descriptores
-      #print nombre+":\n\t"
-      
-        update.message.reply_text(nombre+":\n\t")
-      else:
-        if activada is teclado: #preguntar:descriptor es entrada por teclado
-          mensaje=raw_input()
-          for conexion in inputs:#recorrer lista de los descriptores
-            if conexion!=teclado and conexion!=escucha and conexion!=servidor:#Quedarse solo con los peers
-              if mensaje==":q":#mandar :q a todos los clientes
-                conexion.send(mensaje)
-              else:# se trata de un mensaje normal
-                conexion.send(nombre+":\n\t"+mensaje)
-          if mensaje==":q":# desconctarse a parte del servidor
-            servidor.send(mensaje+","+str(puerto_par))
-            conexion.close()
-            #sys.exit()
-            update.message.reply_text(mensaje, reply_markup = markup3)
-            return MENU
-            #print nombre
-          else:
-            mensaje=activada.recv(4096)
-          if mensaje==":q":# si un usuario envia :q nos cerramos esa conexion
-          #print "Se ha desconectado :",activada.getsockname()[0]+", "+str(activada.getsockname()[1])
-            update.message.reply_text("Se ha desconectado :",activada.getsockname()[0]+", "+str(activada.getsockname()[1]))
-            activada.close()
-            inputs.remove(activada)
-          else:
-          #print mensaje
-            update.message.reply_text(mensaje)
+  update.message.reply_text("¿Te gustaría añadir una frase?", reply_markup = markup16)
+
+  return FRASE
+
+
+def guardar(bot, update, user_data):
+
+
+  update.message.reply_text("Pulse Frase", reply_markup = markup17)
+  return OPCIONES
+
+  # mongoClient = MongoClient('localhost', 27017)
+  # db = mongoClient.Frases
+  # collection = db.frases
+
+
+  # fra += 1
+  # update.message.reply_text(mensaje, reply_markup = markup3)
+  # return MENU
 
 def info(bot, update, user_data):
+
+    global fra
     text = update.message.text
     category = user_data['choice']
     user_data[category] = text
+    print(user_data['choice'])
     del user_data['choice']
+    print(user_data)
+    print(category)
+    if((category == 'Cosa') |(category == 'Otros')):
+      #update.message.reply_text("¡Bien! De momento sabemos:"
+       #                       "{}"
+        #                      "¿Quieres añadir o modificar algo?".format(
+         #                         convertir(user_data)), reply_markup=markup2)
+      #update.message.reply_text("¡Bien! De momento sabemos: \n%s\n%s"%user_data['Cosa'], 
+      #user_data['Otros'], replymarkup=markup2) 
 
-    update.message.reply_text("¡Bien! De momento sabemos:"
-                              "{}"
-                              "¿Quieres añadir o modificar algo?".format(
-                                  convertir(user_data)), reply_markup=markup2)
+      update.message.reply_text("¿Quieres añadir o modificar algo?", reply_markup = markup2)
+      return OPCIONES
+    
+    if((category == 'Tipo')):
+      #print(convertir(user_data))
+      #update.message.reply_text(convertir(user_data))
+      print("TIPOOOOO")
+      print(user_data)
+      #for car, valor in user_data.items():
+      #publi.objeto = user.data['Tipo']
+      #print(publi.objeto)
+      update.message.reply_text("¿Ver?", reply_markup=markup7)
 
-    return OPCIONES
+      return PUBLI  
+    
+    if(category == 'Continuar'):
+      publi.objeto = user.data['Tipo']
+      update.message.reply_text("¿Ver?", reply_markup=markup7)
+
+    
+    if((category == 'Introducir datos')):
+
+      for car, valor in user_data.items():
+        var = valor.split('/')
+        publi.tienda = var[0]
+        publi.objeto = var[1]
+        publi.oferta = var[2]
+
+      update.message.reply_text("Ahora localización", reply_markup =markup10)
+
+      return INTRO_SITIO
+
+    if((category == 'Cercania')):
+
+     # del user_data['Buscar']
+     # update.mesage.reply_text(convertir(user_data))
+      for car, valor in user_data.items():
+        publi.distancia = valor
+
+      update.message.reply_text('Ver por cercanía', reply_markup = markup13)
+      return MENU
+    
+    if((category == 'Buscar')):
+
+      for car, valor in user_data.items():
+        #print(valor)
+        #mostrar_objetos(bot, update, user_data, valor)
+        update.message.reply_text("¿Mostrar?", reply_markup=markup6)
+        #del user_data['Buscar']
+        print(user_data)
+      return MOSTRAR
+
+    if((category == 'Frase')):
+      mongoClient = MongoClient('localhost', 27017)
+      db = mongoClient.Frases
+      collection = db.frases
+      nueva = user_data['Frase']
+      print(nueva)
+      fra += 1
+      print(fra)
+      collection.save({'num': fra,'frase': nueva})
+      
+
+      update.message.reply_text(mensaje, reply_markup = markup3)
+      del user_data['Frase']
+      return MENU
     #return IMAGEN
 
 
@@ -228,47 +330,47 @@ def hecho(bot, update, user_data):
     db = mongoClient.Objetos
     collection = db.objetos
 
-    #print(user_data) 
-    lista.append(pasarALista(user_data))
-    #print(lista)
+    #print(user_data.items()) 
+
+
+    for car, valor in user_data.items():
+
+        if(car == 'Cosa'):
+          objetoPerdido.objeto = valor
+          
+        if(car == 'Otros'):
+          objetoPerdido.otros = valor
+
 
     formato = "%d/%m/%Y %H:%M"
     ahora = datetime.utcnow()
     objeto_datetime = datetime.strftime(ahora, formato)
 
     objetoPerdido.fecha = objeto_datetime
-
-    update.message.reply_text("Las características del objeto son:"
-                              "{}".format(convertir(user_data)))
+    print("HECHO")
+    #update.message.reply_text("Las características del objeto son: "+ objetoPerdido.objeto+
+    #" y " + objetoPerdido.otros)
     print(objetoPerdido.idOb)
     print(objetoPerdido.lugar)
     print(objetoPerdido.otros)
     print(objetoPerdido.imagen)
     print(objetoPerdido.fecha)
+    print(objetoPerdido.objeto)
 
 
     mongoClient = MongoClient('localhost', 27017)
     db = mongoClient.Objetos
     collection = db.objetos
-    collection.save({'num': objetoPerdido.idOb, 'imagen': objetoPerdido.imagen,
-    'lugar': objetoPerdido.lugar, 'otros': objetoPerdido.otros, 'fecha': objetoPerdido.fecha})
+    collection.save({'num': objetoPerdido.idOb, 'imagen': objetoPerdido.imagen, 
+    'cosa': objetoPerdido.objeto, 'lugar': objetoPerdido.lugar, 
+    'otros': objetoPerdido.otros, 'fecha': objetoPerdido.fecha})
     obj += 1 
     print(obj)
     update.message.reply_text(mensaje, reply_markup = markup3)
+    del user_data['Cosa']
+    del user_data['Otros']
     return MENU
 
-# def imagen(bot, update, user_data):
-#     global esperando_archivo
-#     print("Imagen")
-#     update.message.reply_text("Seleccione la foto del objeto")
-#     if esperando_archivo == 1:
-#         file = bot.getFile(update.message.photo[-1].file_id)
-#         filename = os.path.join('imagen', '{}.jpg'.format(photo_file.file_id))
-#         photo_file.download(filename)
-#         esperando_archivo = 0
-
-#     update.message.reply_text("¿Qué característica del objeto desea añadir?", reply_markup=markup2)
-#     return OPCIONES
 
 def imagen(bot, update, user_data):
     global obj
@@ -279,7 +381,7 @@ def imagen(bot, update, user_data):
     user = update.message.from_user.first_name
 
 
-    tam = str(update.message.photo[-1].file_size)
+   # tam = str(update.message.photo[-1].file_size)
 
     name = "./imagen/" + user + '_' + str(obj) + '_imagen.jpg'
     objetoPerdido.idOb = obj
@@ -287,83 +389,25 @@ def imagen(bot, update, user_data):
     print(objetoPerdido.idOb)
     print(name)
 
-    # user_location = update.message.location
-    # print("Location of %s: %f / %f", user.first_name, user_location.latitude,
-    #              user_location.longitude)
-    #print("file_id: " + str(update.message.photo.file_id))
-  #  print os.getcwd()
-   # os.chdir("/home/administrador/Telegram-Bot/python-telegram-bot/imagen")
-    newFile.download(name)
-   
-   
-   # shutil.move(name, "imagen")
  
-   # os.chdir("/home/administrador/Telegram-Bot/python-telegram-bot")
-  #  newFile.download(name)
-    #newFile.download('test.jpg')
-    update.message.reply_text("¿Qué característica del objeto desea añadir?", reply_markup=markup2)
-    return OPCIONES
+    newFile.download(name)
+
+    update.message.reply_text("Ubicación: ")
+    #update.message.reply_text("¿Qué característica del objeto desea añadir?", reply_markup=markup2)
+    #return OPCIONES
+    return SITIO
 
 
-def image(bot, update, user_data):
-    print("Imagen")
-    update.message.reply_text("??????????? ????")
-    photo_file = bot.getFile(update.message.photo[-1].file_id)
-    filename = os.path.join('imagen', '{}.jpg'.format(photo_file.file_id))
-    photo_file.download(filename)
-    if img_has_cat(filename):
-        update.message.reply_text("?? ???????? ???? ?????, ???????? ? ??????????.")
-        new_filename = os.path.join('cats', '{}.jpg'.format(photo_file.file_id))
-        os.rename(filename, new_filename)
-    else:
-        os.remove(filename)
-        update.message.reply_text("???????, ????? ?? ??????????!") 
-    
-    update.message.reply_text("¿Qué característica del objeto desea añadir?", reply_markup=markup2)
-    return OPCIONES
+def sitio(bot, update, user_data):
+
+  posicion = (update.message.location.latitude, update.message.location.longitude)
+  print(posicion)
+  objetoPerdido.lugar = posicion
+
+  update.message.reply_text("¿Qué característica del objeto desea añadir?", reply_markup=markup2)
+  return OPCIONES
 
 
-def finalizar(bot, update):
-   
-    update.message.reply_text("Muchas gracias por usar este bot :) "
-                              "Nos vemos pronto " + str(update.message.chat.first_name))
-    
-
-    return ConversationHandler.END
-
-
-def tiempo(bot, update, user_data):
-  update.message.reply_text("El tiempo en Alcalá es de: ")
-
-  owm = pyowm.OWM('702f3dbc0eac34c326e7f3b7ea4f7bbd')
-  observation = owm.weather_at_place('Alcala de Henares, es')
-  w = observation.get_weather()
-  temperature = w.get_temperature('celsius')
-  viento = w.get_wind()
-  humedad = w.get_humidity()
-  lluvia = w.get_rain()
-  print(str(lluvia))
-
-
-
-  update.message.reply_text("Temperatura máxima: %s ºC\nTemperatura mínima: %s ºC\nTemperatura actual: %s ºC"
-    %(temperature['temp_max'], temperature['temp_min'], temperature['temp']))
-  
-  update.message.reply_text("Viento: %s" %(viento['speed']))
-
-  update.message.reply_text("Humedad: "+ str(humedad) +"%")
-  # weather = Weather(unit=Unit.CELSIUS)
-  # print("3")
-  # location = weather.lookup_by_location('burgos')
-  # print("4")
-  # condition = location.condition
-  # forecasts = location.forecast
-  # for forecast in forecasts:
-  #   print(forecast.text)
-  #   print(forecast.date)
-  # #print(condition.text)
-  update.message.reply_text(mensaje, reply_markup = markup3)
-  return MENU
 
 def publicidad(bot, update, user_data):
   mongoClient = MongoClient('localhost', 27017)
@@ -371,22 +415,119 @@ def publicidad(bot, update, user_data):
   collection = db2.publicidad
   ofertas = collection.find()
   #for publi in range(0, items):
-  print("conectado")
+  
   num = 1
   for publi in ofertas:
+    pos = publi['localizacion']
+
     update.message.reply_text("%s: %s"%(publi['tienda'], publi['oferta']))
 
-    nombre = "/home/ubuntu/Telegram_Bot/python-telegram-bot/publicidad/oferta_" + str(num) + ".jpg"
-    print(nombre)
-    #bot.send_photo(chat_id, photo = open(nombre, 'rb'))
-    #update.message.send_photo(chat_id, photo = open(nombre, 'rb'))
-    #update.send_photo(chat_id, photo = open(nombre, 'rb'))
-    #update.send_photo(chat_id = chat_id, photo = open('./publicidad/oferta_1.jpg','rb'))
+    nombre = "./publicidad/oferta_" + str(num) + ".jpg"
+    bot.send_location(chat_id = update.message.chat_id, latitude=pos[0], longitude=pos[1])
+    bot.send_photo(chat_id = update.message.chat_id, photo=open((nombre).encode('utf-8'),'rb'))
+
     num += 1
 
+  update.message.reply_text(mensaje, reply_markup = markup4)
+#  return MENU
+  return FILTRO
+
+def tipo(bot, update, user_data):
+  update.message.reply_text("Filtrado por tipo de objeto en oferta o por distancia:", 
+  reply_markup = markup5)
+  return FILTRADO
+
+def filtrado_tipo(bot, update, user_data):
+  update.message.reply_text("¿Qué objeto está buscando?")
+  text = update.message.text
+  user_data['choice'] = text
+  print(text, user_data)
+#  update.message.reply_text("Tipo", reply_markup = markup14)
+#  return OPCIONES
+  return RESPUESTA
+
+def buscar_tipo(bot, update, user_data):
+  #update.message.reply_text("Estas son las ofertas:")
+  mongoClient = MongoClient('localhost', 27017)
+  db2 = mongoClient.Publicidad
+  collection = db2.publicidad
+  ofertas = collection.find()
+  #print("objeto: " + objeto)
+  #print(publi.objeto)
+  print(user_data['Tipo'])
+  for car, valor in user_data.items():
+    objeto = valor
+    print(objeto)
+  num = 1
+  for publi in ofertas:
+    #print(publi['oferta'])
+    if(publi['objeto'] == objeto):
+      
+      pos = publi['Localizacion']
+      update.message.reply_text("%s: %s"%(publi['tienda'], publi['oferta']))
+
+      nombre = "./publicidad/oferta_" + str(num) + ".jpg"
+      bot.send_location(chat_id = update.message.chat_id, latitude=pos[0], longitude=pos[1])
+      bot.send_photo(chat_id = update.message.chat_id, photo=open((nombre).encode('utf-8'),'rb'))
+
+      num += 1
+
   update.message.reply_text(mensaje, reply_markup = markup3)
+  del user_data['Buscar']
+  del user_data['Tipo']
   return MENU
 
+
+def filtrado_lugar(bot, update, user_data):
+  update.message.reply_text("Envíe su ubiación")
+  return UBICACION
+
+def ubicacion(bot, update, user_data):
+  posicion = (update.message.location.latitude, update.message.location.longitude)
+  print(posicion)
+  publi.lugar = posicion
+  update.message.reply_text("¿A qué distancia busca la tienda?", reply_markup = markup12)
+  #print(user_data)
+  return OPCIONES
+
+def distancia(bot, update, user_data):
+  # print(publi.distancia)
+  # print(publi.lugar)
+
+  lat1 = publi.lugar[0]
+  lon1 = publi.lugar[1]
+
+  mongoClient = MongoClient('localhost', 27017)
+  db = mongoClient.Publicidad
+  collection = db.publicidad
+  ofertas = collection.find()
+
+  num = 1
+  for publicidad in ofertas:
+
+    pos = publicidad['localizacion']
+
+
+    r = 6371000
+
+    x = (int(pos[1]) - int(lon1) * cos((int(pos[0]) + int(lat1)) / 2))
+    y = (int(pos[0]) - int(lat1))
+
+    distancia = r * sqrt(x*x + y*y)
+
+    if(distancia < publi.distancia):
+      
+      update.message.reply_text("%s: %s"%(publicidad['tienda'], publicidad['oferta']))
+
+      nombre = "./publicidad/oferta_" + str(num) + ".jpg"
+      bot.send_location(chat_id = update.message.chat_id, latitude=pos[0], longitude=pos[1])
+      bot.send_photo(chat_id = update.message.chat_id, photo=open((nombre).encode('utf-8'),'rb'))
+
+      num += 1
+
+  update.message.reply_text(mensaje, reply_markup=markup3)
+
+  return MENU
 
 def objeto(bot, update, user_data):
 
@@ -403,48 +544,131 @@ def objeto_perdido(bot, update, user_data):
   update.message.reply_text("Envíe la foto del objeto")
   return OPC
 
+def buscar_objetos(bot, update, user_data):
+  update.message.reply_text("¿Qué tipo de objeto dido?")
+  text = update.message.text
+  user_data['choice'] = text
+  print("BUSCAAAAR")
+  #update.message.reply_text("Continuar", reply_markup = markup14)
+  #return OPCIONES
+  return RESPUESTA
+  
 
 def mostrar_objetos(bot, update, user_data):
 
+  aux = 0
+  #print(obj)
+  print(user_data.items())
   mongoClient = MongoClient('localhost', 27017)
   db3 = mongoClient.Objetos
   collection = db3.objetos
   objetos = collection.find()
   num = collection.find().count() -1
 
-  if(num == 1):
-    update.message.reply_text("Hay " + str(num) + " objeto perdido.")
-  else:
-    update.message.reply_text("Hay " + str(num) + " objetos perdidos.")
+  for car, valor in user_data.items():
 
+    obj = valor
+  obj = user_data['Buscar']
+  print(obj)
+
+
+  print(user_data)
   for objeto in objetos:
     if(objeto['num'] == 0):
       print("")
     else:
-      update.message.reply_text("%s encontrado en %s\n el %s\nObservaciones: %s\n"
-       %(objeto['imagen'], objeto['lugar'], objeto['fecha'], objeto['otros']))
-  #for obj, lug, mas, ima in objetos:
-   # update.message.reply_text(obj, lug, mas, ima)
-  #for objeto in range(0, obj):
-   # update.message.reply_text("Objeto")
+      if(objeto['cosa'] == obj):
+        
+        bot.send_photo(chat_id = update.message.chat_id, photo=open((objeto['imagen']).encode('utf-8'),'rb'))
+        a = objeto['lugar']
+
+        bot.send_location(chat_id = update.message.chat_id, latitude=a[0], longitude=a[1])
+        update.message.reply_text("Encontrado el %s\nObservaciones: %s\n"
+       %(objeto['fecha'], objeto['otros']))
+        aux += 1
+      
+  if(aux == 0):
+    update.message.reply_text("Ninguna coincidencia, siga buscando. ¡Ánimo!")
 
   update.message.reply_text(mensaje, reply_markup=markup3)
+  del user_data['Buscar']
+  return MENU
+
+
+def finalizar(bot, update):
+   
+    update.message.reply_text("Muchas gracias por usar este bot :) "
+                              "Nos vemos pronto " + str(update.message.chat.first_name))
+    
+    return ConversationHandler.END
+
+
+def tiempo(bot, update, user_data):
+
+  aux = 0
+
+  update.message.reply_text("El tiempo en Alcalá es de: ")
+
+  owm = pyowm.OWM('702f3dbc0eac34c326e7f3b7ea4f7bbd')
+  observation = owm.weather_at_place('Alcala de Henares, es')
+  #observation = owm.weather_at_place('Wrexham, uk')
+  #observation = owm.weather_at_place('Helsinki, fi')
+  w = observation.get_weather()
+  temperature = w.get_temperature('celsius')
+  viento = w.get_wind()
+  humedad = w.get_humidity()
+  nubes = w.get_clouds()
+
+  update.message.reply_text("Temperatura máxima: %s ºC\nTemperatura mínima: %s ºC\nTemperatura actual: %s ºC"
+    %(temperature['temp_max'], temperature['temp_min'], temperature['temp']))
+  
+  update.message.reply_text("Viento: %s" %(viento['speed']))
+
+  update.message.reply_text("Humedad: "+ str(humedad) +"%")
+
+  if((nubes < 10) & (aux == 0)):
+    update.message.reply_text("Despejado")
+    update.message.reply_text(emojize(":sun_with_face:"))
+    aux = 1
+  if((nubes > 40) & (humedad > 70) & (aux == 0)):
+    update.message.reply_text("Lloviendo")
+    update.message.reply_text(emojize(":cloud_with_rain:"))
+    aux = 1
+  if((nubes > 70) & (humedad > 70) & (temperature['temp'] < 0) & (aux == 0)):
+    update.message.reply_text("Nevando")
+    update.message.reply_text(emojize(":cloud_with_snow:"))
+    aux = 1
+  else:
+    if(aux == 0):
+      update.message.reply_text("Cubierto")
+      update.message.reply_text(emojize(":cloud:"))
+
+  update.message.reply_text(mensaje, reply_markup = markup3)
   return MENU
 
 def juego(bot, update):
   update.message.reply_text(game)  
 
+
 def pole(bot, update, user_data):
   global pole
-  
-  mongoClient = MongoClient('localhost', 27017)
-  db = mongoClient.Pole
-  collection = db2.pole
+  #print(pole)
+ # mongoClient = MongoClient('localhost', 27017)
+  #db = mongoClient.Pole
+  #collection = db2.pole
+  print("HOLA")
 
-
-  fecha = datetime.datetime.now()
+  #fecha = datetime.datetime.now()
+  fecha = datetime.now()
+  print(str(fecha))
   hora = fecha.hour
- 
+  minutos = fecha.minute
+  segundos = fecha.second
+  
+  seconds = segundos + (minutos * 60) + (hora * 24 * 60)
+
+  print(seconds)
+  #if(hora.total_seconds)
   if(pole == True):
     update.message.reply_text("Se te han adelantado. Prueba otro día")
   else:
@@ -457,7 +681,7 @@ def pole(bot, update, user_data):
   
   update.message.reply_text(mensaje, reply_markup=markup3)
   return MENU
-  
+ 
 
 def unknown(bot, update, user_data):
   update.message.reply_text("Disculpe, no le he entendido.\n¿Me puede repetir su petición?",
@@ -501,8 +725,8 @@ def admin(bot, update, user_data):
         mes2 = elem[1]
         ano2 = elem[2]
         
-        a = date(ano2, mes2, dia2)
-        print(a)
+        #a = date(ano2, mes2, dia2)
+        #print(a)
         total_2 = ((int(mes2) - 1 ) * 30) + int(dia2)
         print(str(total_2))
         
@@ -513,7 +737,79 @@ def admin(bot, update, user_data):
           
           borrar = {'num': int(aux)}
           collection.delete_one(borrar)
-        
+ 
+  print("HECHO")
+  update.message.reply_text("¿Quieres añadir publicidad?", reply_markup = markup8)
+  return MAS
+ 
+def mas(bot, update, user_data):       
+
+  update.message.reply_text("Vamos a añadir publicidad")
+  update.message.reply_text("Introduce el nombre de la tienda, el tipo de objeto y la oferta en el",
+   reply_markup = markup9)
+
+  #print(user_data)
+  return OPCIONES
+
+def intro_dat(bot, update, user_data):
+ 
+  print(user_data)
+
+
+#   update.message.reply_text(mensaje, reply_markup=markup3)
+#   return MENU
+
+def intro_loc(bot, update, user_data):
+
+  # print(publi.objeto)
+  # print(publi.tienda)
+  # print(publi.oferta)
+
+  posicion = (update.message.location.latitude, update.message.location.longitude)
+  print(posicion)
+  publi.lugar = posicion
+
+  update.message.reply_text("Introduce imagen de la oferta", reply_markup= markup11)
+  return INTRO_IMAGEN
+
+def intro_ima(bot, update, user_data):
+
+  global pub
+  print(publi.objeto)
+  print(publi.tienda)
+  print(publi.oferta)
+
+  mongoClient = MongoClient('localhost', 27017)
+  db = mongoClient.Publicidad
+  collection = db.publicidad
+
+  pub = collection.find().count()
+
+  file_id = update.message.photo[-1].file_id
+  newFile = bot.getFile(file_id)
+
+  name = "./publicidad/oferta_" +str(pub) + '.jpg'
+  publi.imagen = name
+  
+  collection.save({'tienda': publi.tienda, 'objeto': publi.objeto, 
+    'oferta': publi.oferta, 'localizacion': publi.lugar, 
+    'imagen': publi.imagen})
+  print(name)
+
+ 
+  newFile.download(name)
+
+  collection 
+  pub += 1
+  update.message.reply_text(mensaje, reply_markup=markup3)
+  del user_data['Introducir datos']
+  return MENU
+
+def bot_DHM(bot, update, user_data):
+
+  update.message.reply_text("¿Todo bien? " + str(update.message.chat.first_name))
+
+  update.message.reply_text("He sido programado por Diego de la Horra, espero que te guste cómo funciono")
 
   update.message.reply_text(mensaje, reply_markup=markup3)
   return MENU
@@ -527,9 +823,11 @@ def main():
     mongoClient = MongoClient('localhost', 27017)
     updater.start_polling()
 
-    #updater.message.reply_text("HOLA")
+
     print("Iniciando bot")
     print(bot.get_me())
+   # print(time.time(), time.clock())
+
     dp = updater.dispatcher
 
     #update.message.reply_text("Bienvenido al @BotDeLaHorra", reply_markup = markup4)
@@ -537,9 +835,11 @@ def main():
     #Menú
     menu = ConversationHandler(
         entry_points=[CommandHandler('start', start),
-                RegexHandler('^(hola|Hola|ey|Ey|HOLA|HELLO|hello|hi|que|qué)$', start)]
+                RegexHandler('^(hola|Hola|ey|Ey|HOLA|HELLO|hello|hi|que|qué)$', start),
+                RegexHandler('^(hola bot|Hola bot|hola Bot|Hola Bot|Buenos días|buenas|Buenas)$', start)
+
                  #RegexHandler('', start)]
-                ,
+                ],
 
         states={
             MENU: [RegexHandler('^Objetos Perdidos$',
@@ -549,9 +849,8 @@ def main():
                       RegexHandler('^Publicidad$',
                                     publicidad, pass_user_data = True),
                       RegexHandler('^Finalizar$', finalizar),
-
-                      RegexHandler('^Chat$', hablar, pass_user_data = True),
-
+                      RegexHandler('^Chat$', buzon, pass_user_data = True),
+                      
 		                  RegexHandler('^Juego$', juego),
 
 		                  RegexHandler('^(Pole|pole|POLE)$', pole,
@@ -559,33 +858,51 @@ def main():
 
                       RegexHandler('^AdminBot$', admin, pass_user_data = True),
 
-                      RegexHandler('',
-                                unknown, pass_user_data = True),
-                            
-                      
+                      RegexHandler('^(DeLaHorraBot)$', bot_DHM, pass_user_data = True),
+
+                      RegexHandler('^(Filtrar distancia)$', distancia, pass_user_data = True),
+
+                      RegexHandler('', unknown, pass_user_data = True),
 
                        ],
             
-            OBJETO: [RegexHandler('^Si$', objeto_perdido, pass_user_data = True,
-                                    ),
-                    RegexHandler('^No$', mostrar_objetos, pass_user_data=True
-                    )
+            OBJETO: [RegexHandler('^Si$', objeto_perdido, pass_user_data = True,),
+                    RegexHandler('^Buscar$', buscar_objetos, pass_user_data=True),
+                    RegexHandler('^No$', start)
             ],
 
-            OPCIONES: [RegexHandler('^(Objeto|Lugar|Color|Marca|Dimensiones|Otros)$',
+            OPCIONES: [RegexHandler('^(Cosa|Otros|Introducir datos|Cercania|Continuar|Frase)$',
                           car_obj,
                           pass_user_data=True),
                      # RegexHandler('^Imagen$', imagen, pass_user_data = True),
-                      RegexHandler('^Hecho$', hecho, pass_user_data = True)
+                      RegexHandler('^Terminado$', hecho, pass_user_data = True)
+
                           ],
-            
+            SITIO: [MessageHandler(Filters.location, sitio, pass_user_data = True)],
             OPC: [MessageHandler(Filters.photo, imagen, pass_user_data = True)],
 
-            RESPUESTA: [MessageHandler(Filters.text,
-                                          info,
-                                          pass_user_data=True),
-                           ],
+            FILTRO: [RegexHandler('^Ok$', start),
+                RegexHandler('^Filtrar$', tipo, pass_user_data = True)],
 
+            MOSTRAR: [RegexHandler('^Mostrar$', mostrar_objetos, pass_user_data = True)],
+            PUBLI:[RegexHandler('^Ver$', buscar_tipo , pass_user_data = True)],
+            FILTRADO: [RegexHandler('^(Proximidad)$', filtrado_lugar, pass_user_data = True),
+                      RegexHandler('^Tipo$', filtrado_tipo, pass_user_data = True)
+                    ],
+            UBICACION: [MessageHandler(Filters.location, ubicacion, pass_user_data = True)],
+
+            RESPUESTA: [MessageHandler(Filters.text, info, pass_user_data=True),
+                           ],
+            MAS: [RegexHandler('^Mas$', mas, pass_user_data = True),
+                  RegexHandler('^Ok$', start)],
+
+            INTRO: [RegexHandler('^Introducir datos$', intro_dat, pass_user_data = True)],
+                  # RegexHandler('^Introducir localizacion$', intro_loc, pass_user_data = True),
+            INTRO_IMAGEN:[MessageHandler(Filters.photo, intro_ima, pass_user_data = True)],
+            INTRO_SITIO:[MessageHandler(Filters.location, intro_loc, pass_user_data = True)],
+
+            FRASE: [RegexHandler('^(Guardar frase)$', guardar, pass_user_data = True),
+                    RegexHandler('^(No guardar)$', start)],
           
         },
 
